@@ -53,7 +53,7 @@ bool OFP_Solver::check_dimensions() const
     return true;
 }
 
-void OFP_Solver::perturb_binaries(const std::vector<double>& x_star, std::vector<double>& x_tilde)
+void OFP_Solver::restart(const std::vector<double>& x_star, std::vector<double>& x_tilde)
 {
     std::uniform_real_distribution<double> distr(-0.3, 0.7);
     for (const int ib : this->bins_)
@@ -96,12 +96,11 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
     model.lp_.num_col_ = this->n;
     model.lp_.num_row_ = this->m;
     model.lp_.sense_ = ObjSense::kMinimize;
-    model.lp_.offset_ = this->m;
     eigen_vector_2_std_vector<double>(this->c_, model.lp_.col_cost_);
     eigen_vector_2_std_vector<double>(this->l_x_, model.lp_.col_lower_);
     eigen_vector_2_std_vector<double>(this->u_x_, model.lp_.col_upper_);
     eigen_vector_2_std_vector<double>(this->l_A_, model.lp_.row_lower_);
-    eigen_vector_2_std_vector<double>(this->u_A_, model.lp_.col_upper_);
+    eigen_vector_2_std_vector<double>(this->u_A_, model.lp_.row_upper_);
     sparse_eigen_2_highs(this->A_, model.lp_.a_matrix_);
 
     Highs highs;
@@ -132,7 +131,7 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
 
     // fractionality comparison
     auto frac_comp = [](const std::pair<int, double>& a, const std::pair<int, double>& b) -> bool {
-        return a.second >= b.second;
+        return a.second > b.second;
     };
 
     // initialize
@@ -140,6 +139,7 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
     std::vector<double> x_tilde_k, x_tilde_km1;
     int iter = 0;
     int restarts = 0;
+    int perturbations = 0;
     double alpha = this->settings_.alpha0;
     Eigen::VectorXd Delta_S (this->n);
     Delta_S.setZero();
@@ -147,7 +147,6 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
     const int T = static_cast<int>(std::round(this->settings_.T_frac * n));
 
     // OFP loop
-    this->info_.feasible = true; // set false if early termination
     while (!vectors_equal(x_star_k, x_tilde_k, this->settings_.tol))
     {
         // check for early termination
@@ -155,7 +154,6 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
             std::chrono::high_resolution_clock::now() - start_time).count());
         if (elapsed_time > this->settings_.t_max || iter > this->settings_.max_iter || restarts > this->settings_.max_stalls)
         {
-            this->info_.feasible = false;
             break;
         }
 
@@ -172,7 +170,7 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
             // find T most fractional variables in x_star
             std::vector<std::pair<int, double>> frac_vec;
             frac_vec.reserve(this->bins_.size());
-            for (int i : this->bins_) {
+            for (const int i : this->bins_) {
                 frac_vec.emplace_back(i, std::min(x_star_k[i], 1.0 - x_star_k[i]));
             }
 
@@ -187,12 +185,14 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
 
             // clear buffer
             L.clear();
+
+            ++perturbations;
         }
 
         // push to buffer and check for cycle
         if (!L.insert(std::make_pair(x_tilde_k, alpha)))
         {
-            perturb_binaries(x_star_k, x_tilde_k);
+            restart(x_star_k, x_tilde_k);
             ++restarts;
         }
 
@@ -223,15 +223,42 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
         x_tilde_km1 = x_tilde_k;
     }
 
-    // log info
-    this->info_.iter = iter;
-    this->info_.restarts = restarts;
-    this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::high_resolution_clock::now() - start_time).count());
-
     // get solution
     std_vector_2_eigen_vector(x_tilde_k, sol);
 
+    // log info
+    this->info_.iter = iter;
+    this->info_.restarts = restarts;
+    this->info_.perturbations = perturbations;
+    this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now() - start_time).count());
+    this->info_.alpha = alpha;
+    this->info_.feasible = check_feasible(sol);
+
     // return success flag
     return this->info_.feasible;
+}
+
+bool OFP_Solver::check_feasible(const Eigen::VectorXd& x) const
+{
+    if (x.size() != n)
+        throw std::invalid_argument("OFP_Solver::check_feasible: x.size() != n");
+
+    for (int i=0; i < n; ++i) {
+        if (x(i) < this->l_x_(i) - this->settings_.tol || x(i) > this->u_x_(i) + this->settings_.tol)
+            return false;
+    }
+
+    Eigen::VectorXd Ax = this->A_*x;
+    for (int i=0; i < m; ++i) {
+        if (Ax(i) < this->l_A_(i) - this->settings_.tol || Ax(i) > this->u_A_(i) + this->settings_.tol)
+            return false;
+    }
+
+    for (const int ib : this->bins_) {
+        if (std::abs(x(ib) - std::round(x(ib)) > this->settings_.tol))
+            return false;
+    }
+
+    return true;
 }

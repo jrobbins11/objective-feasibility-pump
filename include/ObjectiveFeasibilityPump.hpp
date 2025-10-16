@@ -24,7 +24,7 @@ namespace ObjectiveFeasibilityPump
         double delta_alpha = 0.1;
         double t_max = 60.0;
         int lp_threads = 1;
-        int buffer_size = 10;
+        int buffer_size = 20;
         double T_frac = 0.1;
         unsigned int rng_seed = 0;
     };
@@ -33,8 +33,10 @@ namespace ObjectiveFeasibilityPump
     {
         int iter = 0;
         int restarts = 0;
+        int perturbations = 0;
         double runtime = 0.0;
         bool feasible = false;
+        double alpha = 0.0;
     };
 
 
@@ -55,7 +57,7 @@ namespace ObjectiveFeasibilityPump
 
         bool solve(Eigen::VectorXd& sol);
 
-        OFP_Info get_info();
+        OFP_Info get_info() const { return info_; }
 
     private:
         OFP_Info info_;
@@ -63,14 +65,15 @@ namespace ObjectiveFeasibilityPump
         Eigen::VectorXd c_, l_A_, u_A_, l_x_, u_x_;
         Eigen::SparseMatrix<double> A_;
         std::vector<int> bins_;
-        int n, m;
+        int n = 0, m = 0;
         std::mt19937 rand_gen;
 
         bool check_dimensions() const;
         static bool check_settings(const OFP_Settings& settings);
         static void sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix, HighsSparseMatrix& highs_matrix);
         static bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b, double tol);
-        void perturb_binaries(const std::vector<double>& x_star, std::vector<double>& x_tilde);
+        void restart(const std::vector<double>& x_star, std::vector<double>& x_tilde);
+        bool check_feasible(const Eigen::VectorXd& x) const;
 
         template <typename T>
         static void eigen_vector_2_std_vector(const Eigen::Vector<T, -1>& eigen_vec, std::vector<T>& std_vec) {
@@ -86,6 +89,7 @@ namespace ObjectiveFeasibilityPump
                 eigen_vec(i) = std_vec[i];
             }
         }
+    };
 
     template <typename T, typename EqualsComparator>
     class cycle_buffer
@@ -126,9 +130,6 @@ namespace ObjectiveFeasibilityPump
         const size_t N;
         std::vector<T> buffer;
         EqualsComparator comp;
-    };
-
-
     };
 }
 
