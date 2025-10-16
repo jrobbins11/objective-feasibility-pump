@@ -17,7 +17,7 @@ namespace ObjectiveFeasibilityPump
     struct OFP_Settings
     {
         int max_iter = 10000;
-        int max_stalls = 1000;
+        int max_stalls = 100;
         double tol = Eigen::NumTraits<double>::dummy_precision();
         double alpha0 = 0.9;
         double phi = 0.9;
@@ -70,13 +70,21 @@ namespace ObjectiveFeasibilityPump
         static bool check_settings(const OFP_Settings& settings);
         static void sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix, HighsSparseMatrix& highs_matrix);
         static bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b, double tol);
-        void perturb_binaries(const std::vector<double>& x_star, const std::vector<double>& x_tilde);
+        void perturb_binaries(const std::vector<double>& x_star, std::vector<double>& x_tilde);
 
         template <typename T>
         static void eigen_vector_2_std_vector(const Eigen::Vector<T, -1>& eigen_vec, std::vector<T>& std_vec) {
             std_vec.clear();
             for (int i=0; i<eigen_vec.size(); ++i)
                 std_vec.push_back(eigen_vec(i));
+        }
+
+        template <typename T>
+        static void std_vector_2_eigen_vector(const std::vector<T>& std_vec, Eigen::Vector<T, -1>& eigen_vec) {
+            eigen_vec.resize(std_vec.size());
+            for (size_t i=0; i<std_vec.size(); ++i) {
+                eigen_vec(i) = std_vec[i];
+            }
         }
 
     template <typename T, typename EqualsComparator>

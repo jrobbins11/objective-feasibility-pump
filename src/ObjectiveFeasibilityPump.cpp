@@ -53,10 +53,16 @@ bool OFP_Solver::check_dimensions() const
     return true;
 }
 
-void OFP_Solver::perturb_binaries(const std::vector<double>& x_star, const std::vector<double>& x_tilde)
+void OFP_Solver::perturb_binaries(const std::vector<double>& x_star, std::vector<double>& x_tilde)
 {
-    constexpr double dist_min = -0.3;
-    constexpr double dist_max = 0.7;
+    std::uniform_real_distribution<double> distr(-0.3, 0.7);
+    for (const int ib : this->bins_)
+    {
+        const double frac = std::min(x_star[ib], 1.0 - x_star[ib]);
+        if (frac + std::max(distr(this->rand_gen), 0.0) > 0.5) {
+            x_tilde[ib] = x_star[ib] < 1.0 - x_star[ib] ? 1.0 : 0.0;
+        }
+    }
 }
 
 void OFP_Solver::setup(const Eigen::VectorXd& c, const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& l_A, const Eigen::VectorXd& u_A,
@@ -106,12 +112,16 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
     assert(return_status == HighsStatus::kOk);
     const HighsLp& lp = highs.getLp();
 
-    // solve root relaxation
-    return_status = highs.run();
-    assert(return_status == HighsStatus::kOk); // make sure optimization ran ok
+    // run highs to solve LP
+    auto solve_LP = [&]() -> std::vector<double> {
+        return_status = highs.run();
+        assert(return_status == HighsStatus::kOk); // make sure optimization ran ok
 
-    const HighsSolution& solution = highs.getSolution();
-    assert(highs.getInfo().primal_solution_status); // make sure solution exists
+        const HighsSolution& solution = highs.getSolution();
+        assert(highs.getInfo().primal_solution_status); // make sure solution exists
+
+        return solution.col_value;
+    };
 
     // (x_tilde, alpha) comparison
     auto x_tilde_alpha_comp = [&](const std::pair<std::vector<double>, double>& a, const std::pair<std::vector<double>, double>& b) -> bool {
@@ -126,11 +136,13 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
     };
 
     // initialize
-    std::vector<double> x_star_k = solution.col_value;
+    std::vector<double> x_star_k = solve_LP(); // root relaxation
     std::vector<double> x_tilde_k, x_tilde_km1;
     int iter = 0;
     int restarts = 0;
     double alpha = this->settings_.alpha0;
+    Eigen::VectorXd Delta_S (this->n);
+    Delta_S.setZero();
     cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
     const int T = static_cast<int>(std::round(this->settings_.T_frac * n));
 
@@ -147,8 +159,15 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
             break;
         }
 
+        // round x_star to get x_tilde
+        x_tilde_k = x_star_k;
+        for (const int ib : this->bins_)
+        {
+            x_tilde_k[ib] = std::round(x_tilde_k[ib]);
+        }
+
         // check for cycle of length 1 and perturb
-        if (iter > 1 && vectors_equal(x_tilde_k, x_tilde_km1, this->settings_.tol))
+        if (vectors_equal(x_tilde_k, x_tilde_km1, this->settings_.tol))
         {
             // find T most fractional variables in x_star
             std::vector<std::pair<int, double>> frac_vec;
@@ -173,21 +192,46 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
         // push to buffer and check for cycle
         if (!L.insert(std::make_pair(x_tilde_k, alpha)))
         {
-
-
+            perturb_binaries(x_star_k, x_tilde_k);
             ++restarts;
         }
 
+        // update objective for LP and resolve
+        for (const int ib : this->bins_)
+        {
+            Delta_S(ib) = (x_tilde_k[ib] < 1.0 - x_tilde_k[ib]) ? 1.0 : -1.0;
+        }
 
+        Eigen::VectorXd Delta_S_alpha;
+        if (this->c_.norm() > this->settings_.tol) // divide by 0 protection
+        {
+            Delta_S_alpha = (1.0 - alpha)*Delta_S + alpha*(Delta_S.norm() / this->c_.norm())*this->c_;
+        }
+        else
+        {
+            Delta_S_alpha = Delta_S;
+        }
+        eigen_vector_2_std_vector(Delta_S_alpha, model.lp_.col_cost_);
+        highs.passModel(model); // should automatically warm-start
+        assert(return_status == HighsStatus::kOk);
 
+        x_star_k = solve_LP();
 
         // increment
         ++iter;
+        alpha *= this->settings_.phi;
+        x_tilde_km1 = x_tilde_k;
     }
 
     // log info
     this->info_.iter = iter;
     this->info_.restarts = restarts;
+    this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now() - start_time).count());
 
+    // get solution
+    std_vector_2_eigen_vector(x_tilde_k, sol);
 
+    // return success flag
+    return this->info_.feasible;
 }
