@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 3.12)
-project(ObjectiveFeasibilityPump)
+project(test_feas_pump)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
+
+include_directories(
+    ../include
+)
 
 include(FetchContent)
 
@@ -21,11 +25,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(eigen)
 
-add_library(ObjectiveFeasibilityPump STATIC src/ObjectiveFeasibilityPump.cpp)
-target_link_libraries(ObjectiveFeasibilityPump PRIVATE highs eigen)
-target_include_directories(ObjectiveFeasibilityPump PUBLIC
-    $<INSTALL_INTERFACE:include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include
+add_executable(test_feas_pump
+    test_feas_pump.cpp
+    ../src/ObjectiveFeasibilityPump.cpp
 )
-
-add_subdirectory(test)
+target_link_libraries(test_feas_pump PRIVATE highs eigen)
