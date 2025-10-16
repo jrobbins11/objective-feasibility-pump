@@ -11,11 +11,6 @@ include_directories(
 )
 add_subdirectory(./extern/HiGHS)
 
-#add_executable(test_highs
-#    test_highs.cpp
-#)
-# target_link_libraries(test_highs PRIVATE highs::highs)
-
 add_executable(test_feas_pump
     test_feas_pump.cpp
     src/ObjectiveFeasibilityPump.cpp

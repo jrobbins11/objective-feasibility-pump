@@ -80,8 +80,8 @@ int main()
     x_u.setConstant(1.0);
     const Eigen::SparseMatrix<double> A = random_sparse_matrix(m, n, density, 1.0);
     Eigen::VectorXd A_l (m), A_u (m);
-    A_l.setConstant(-1.0);
-    A_u.setConstant(1.0);
+    A_l.setConstant(-2.0);
+    A_u.setConstant(2.0);
     std::vector<int> bins;
     for (int i=n-nb; i<n; ++i) {
         bins.push_back(i);
@@ -89,7 +89,7 @@ int main()
 
     ObjectiveFeasibilityPump::OFP_Settings settings;
     settings.max_iter = 10000;
-    settings.alpha0 = 0.0;
+    settings.alpha0 = 1.0;
     settings.t_max = 10.0;
     ObjectiveFeasibilityPump::OFP_Solver OFP (c, A, A_l, A_u, x_l, x_u, bins, settings);
     Eigen::VectorXd sol;

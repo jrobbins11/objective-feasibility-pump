@@ -256,7 +256,7 @@ bool OFP_Solver::check_feasible(const Eigen::VectorXd& x) const
     }
 
     for (const int ib : this->bins_) {
-        if (std::abs(x(ib) - std::round(x(ib)) > this->settings_.tol))
+        if (std::abs(x(ib) - std::round(x(ib))) > this->settings_.tol)
             return false;
     }
 
