@@ -46,6 +46,13 @@ if (BUILD_PYTHON_BINDINGS)
             $<INSTALL_INTERFACE:include>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     )
+
+    set_target_properties(_core PROPERTIES
+            INSTALL_RPATH "$ORIGIN"
+            BUILD_WITH_INSTALL_RPATH TRUE
+    )
+
+    install(TARGETS highs DESTINATION objective_feasibility_pump)
     install(TARGETS _core DESTINATION objective_feasibility_pump)
     
 else() # C++ build
