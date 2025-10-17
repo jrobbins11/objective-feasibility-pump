@@ -15,17 +15,23 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(highs)
 
 FetchContent_Declare(
-    eigen
+    Eigen3
     GIT_REPOSITORY "https://gitlab.com/libeigen/eigen.git"
-    GIT_TAG "5.0.0"
+    GIT_TAG "3.4.1"
 )
-FetchContent_MakeAvailable(eigen)
+FetchContent_MakeAvailable(Eigen3)
 
 add_library(ObjectiveFeasibilityPump STATIC src/ObjectiveFeasibilityPump.cpp)
-target_link_libraries(ObjectiveFeasibilityPump PRIVATE highs eigen)
+target_link_libraries(ObjectiveFeasibilityPump PRIVATE highs Eigen3::Eigen)
 target_include_directories(ObjectiveFeasibilityPump PUBLIC
     $<INSTALL_INTERFACE:include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
+
+set(HIGHS_INCLUDE_PATHs
+    ${highs_SOURCE_DIR}/highs
+    ${highs_BINARY_DIR}
+    CACHE INTERNAL "Path to fetched HiGHS headers" FORCE
 )
 
 add_subdirectory(test)
