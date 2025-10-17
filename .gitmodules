@@ -1,6 +1,0 @@
-[submodule "extern/HiGHS"]
-	path = extern/HiGHS
-	url = https://github.com/ERGO-Code/HiGHS.git
-[submodule "extern/eigen"]
-	path = extern/eigen
-	url = https://gitlab.com/libeigen/eigen.git
