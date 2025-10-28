@@ -228,7 +228,7 @@ bool OFP_Solver::solve()
     }
 
     // get solution
-    std_vector_2_eigen_vector(x_tilde_k, this->solution);
+    std_vector_2_eigen_vector(x_star_k, this->solution);
 
     // log info
     this->info_.iter = iter;
@@ -237,7 +237,7 @@ bool OFP_Solver::solve()
     this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
     this->info_.alpha = alpha;
-    this->info_.feasible = check_feasible(x_tilde_k);
+    this->info_.feasible = check_feasible(x_star_k);
     this->info_.objective = this->c_.dot(this->solution) + b_;
 
     // return success flag
