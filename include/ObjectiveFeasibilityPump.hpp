@@ -55,14 +55,16 @@ namespace ObjectiveFeasibilityPump
             const Eigen::VectorXd& l_x, const Eigen::VectorXd& u_x, const std::vector<int>& bins,
             const OFP_Settings& settings = OFP_Settings());
 
-        bool solve(Eigen::VectorXd& sol);
+        bool solve();
+
+        Eigen::VectorXd get_solution() const;
 
         OFP_Info get_info() const { return info_; }
 
     private:
         OFP_Info info_;
         OFP_Settings settings_;
-        Eigen::VectorXd c_, l_A_, u_A_, l_x_, u_x_;
+        Eigen::VectorXd c_, l_A_, u_A_, l_x_, u_x_, solution;
         Eigen::SparseMatrix<double> A_;
         std::vector<int> bins_;
         int n = 0, m = 0;

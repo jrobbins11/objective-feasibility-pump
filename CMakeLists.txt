@@ -57,7 +57,8 @@ if (BUILD_PYTHON_BINDINGS)
     
 else() # C++ build
     add_library(objective_feasibility_pump STATIC src/ObjectiveFeasibilityPump.cpp)
-    target_link_libraries(objective_feasibility_pump PRIVATE highs Eigen3::Eigen)
+    target_link_libraries(objective_feasibility_pump PRIVATE highs)
+    target_link_libraries(objective_feasibility_pump PUBLIC Eigen3::Eigen)
     target_include_directories(objective_feasibility_pump PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

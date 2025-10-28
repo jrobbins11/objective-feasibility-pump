@@ -92,8 +92,8 @@ int main()
     settings.alpha0 = 1.0;
     settings.t_max = 10.0;
     ObjectiveFeasibilityPump::OFP_Solver OFP (c, A, A_l, A_u, x_l, x_u, bins, settings);
-    Eigen::VectorXd sol;
-    const bool success = OFP.solve(sol);
+    const bool success = OFP.solve();
+    Eigen::VectorXd sol = OFP.get_solution();
     std::cout << "successful? " << (success ? "true" : "false") << std::endl;
 
     const ObjectiveFeasibilityPump::OFP_Info info = OFP.get_info();
