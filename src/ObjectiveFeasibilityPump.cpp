@@ -86,7 +86,7 @@ void OFP_Solver::setup(const Eigen::VectorXd& c, const Eigen::SparseMatrix<doubl
         throw std::invalid_argument("OFP_Solver setup: settings invalid");
 }
 
-bool OFP_Solver::solve(Eigen::VectorXd& sol)
+bool OFP_Solver::solve()
 {
     // start timer
     const auto start_time = std::chrono::high_resolution_clock::now();
@@ -224,7 +224,7 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
     }
 
     // get solution
-    std_vector_2_eigen_vector(x_tilde_k, sol);
+    std_vector_2_eigen_vector(x_tilde_k, this->solution);
 
     // log info
     this->info_.iter = iter;
@@ -233,10 +233,15 @@ bool OFP_Solver::solve(Eigen::VectorXd& sol)
     this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
     this->info_.alpha = alpha;
-    this->info_.feasible = check_feasible(sol);
+    this->info_.feasible = check_feasible(this->solution);
 
     // return success flag
     return this->info_.feasible;
+}
+
+Eigen::VectorXd OFP_Solver::get_solution() const
+{
+    return solution;
 }
 
 bool OFP_Solver::check_feasible(const Eigen::VectorXd& x) const
