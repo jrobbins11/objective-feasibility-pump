@@ -21,7 +21,7 @@ PYBIND11_MODULE(_core, m)
         .def_readwrite("t_max", &OFP_Settings::t_max)
         .def_readwrite("lp_threads", &OFP_Settings::lp_threads)
         .def_readwrite("buffer_size", &OFP_Settings::buffer_size)
-        .def_readwrite("T_frac", &OFP_Settings::T_frac)
+        .def_readwrite("T", &OFP_Settings::T)
         .def_readwrite("rng_seed", &OFP_Settings::rng_seed)
     ;
 
@@ -33,6 +33,7 @@ PYBIND11_MODULE(_core, m)
         .def_readonly("runtime", &OFP_Info::runtime)
         .def_readonly("feasible", &OFP_Info::feasible)
         .def_readonly("alpha", &OFP_Info::alpha)
+        .def_readonly("objective", &OFP_Info::objective)
     ;
 
     py::class_<OFP_Solver>(m, "OFP_Solver")

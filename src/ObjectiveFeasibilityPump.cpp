@@ -6,7 +6,7 @@ bool OFP_Solver::check_settings(const OFP_Settings& settings)
 {
     return settings.alpha0 >= 0 && settings.alpha0 <= 1 && settings.phi > 0 && settings.phi < 1 &&
         settings.max_iter > 0 && settings.max_stalls > 0 && settings.t_max > 0 && settings.lp_threads >= 1 &&
-        settings.buffer_size > 0 && settings.T_frac >= 0 && settings.T_frac < 1;
+        settings.buffer_size > 0 && settings.T >= 0;
 }
 
 void OFP_Solver::sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix, HighsSparseMatrix& highs_matrix)
@@ -66,7 +66,7 @@ void OFP_Solver::restart(const std::vector<double>& x_star, std::vector<double>&
 }
 
 void OFP_Solver::setup(const Eigen::VectorXd& c, const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& l_A, const Eigen::VectorXd& u_A,
-            const Eigen::VectorXd& l_x, const Eigen::VectorXd& u_x, const std::vector<int>& bins, const OFP_Settings& settings)
+            const Eigen::VectorXd& l_x, const Eigen::VectorXd& u_x, const std::vector<int>& bins, const OFP_Settings& settings, double b)
 {
     this->c_ = c;
     this->A_ = A;
@@ -79,6 +79,7 @@ void OFP_Solver::setup(const Eigen::VectorXd& c, const Eigen::SparseMatrix<doubl
     this->n = static_cast<int>(this->c_.size());
     this->m = static_cast<int>(this->A_.rows());
     this->rand_gen = std::mt19937(this->settings_.rng_seed);
+    this->b_ = b;
 
     if (!check_dimensions())
         throw std::invalid_argument("OFP_Solver setup: dimensions mismatch");
@@ -144,11 +145,13 @@ bool OFP_Solver::solve()
     Eigen::VectorXd Delta_S (this->n);
     Delta_S.setZero();
     cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
-    const int T = static_cast<int>(std::round(this->settings_.T_frac * n));
-    std::uniform_int_distribution<int> T_dist(T/2, 3*T/2);
+
+    const int T_min = this->settings_.T/2;
+    const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
+    std::uniform_int_distribution<int> T_dist(T_min, T_max);
 
     // OFP loop
-    while (!vectors_equal(x_star_k, x_tilde_k, this->settings_.tol))
+    while (!check_feasible(x_star_k))
     {
         // check for early termination
         const double elapsed_time = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
@@ -234,7 +237,8 @@ bool OFP_Solver::solve()
     this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
     this->info_.alpha = alpha;
-    this->info_.feasible = check_feasible(this->solution);
+    this->info_.feasible = check_feasible(x_tilde_k);
+    this->info_.objective = this->c_.dot(this->solution) + b_;
 
     // return success flag
     return this->info_.feasible;
@@ -245,8 +249,11 @@ Eigen::VectorXd OFP_Solver::get_solution() const
     return solution;
 }
 
-bool OFP_Solver::check_feasible(const Eigen::VectorXd& x) const
+bool OFP_Solver::check_feasible(const std::vector<double>& x_std) const
 {
+    Eigen::VectorXd x;
+    std_vector_2_eigen_vector(x_std, x);
+
     if (x.size() != n)
         throw std::invalid_argument("OFP_Solver::check_feasible: x.size() != n");
 

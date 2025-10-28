@@ -103,6 +103,7 @@ int main()
     std::cout << "runtime: " << info.runtime << std::endl;
     std::cout << "feasible: " << info.feasible << std::endl;
     std::cout << "alpha: " << info.alpha << std::endl;
+    std::cout << "objective: " << info.objective << std::endl;
 
     return 0;
 }
