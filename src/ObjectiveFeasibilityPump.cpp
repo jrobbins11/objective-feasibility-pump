@@ -1,12 +1,28 @@
 #include "ObjectiveFeasibilityPump.hpp"
 
+// utilities
+#include <sstream>
+#include <iostream>
+
+void print_str(std::stringstream& ss)
+{
+#ifdef IS_PYTHON_ENV
+    py::print(ss.str());
+#else
+    std::cout << ss.str() << std::endl;
+#endif
+    ss.str("");
+}
+
+
+// implementation
 using namespace ObjectiveFeasibilityPump;
 
 bool OFP_Solver::check_settings(const OFP_Settings& settings)
 {
     return settings.alpha0 >= 0 && settings.alpha0 <= 1 && settings.phi > 0 && settings.phi < 1 &&
         settings.max_iter > 0 && settings.max_stalls > 0 && settings.t_max > 0 && settings.lp_threads >= 1 &&
-        settings.buffer_size > 0 && settings.T >= 0;
+        settings.buffer_size > 0 && settings.T >= 0 && settings.verbosity_interval > 0;
 }
 
 void OFP_Solver::sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix, HighsSparseMatrix& highs_matrix)
@@ -198,6 +214,12 @@ bool OFP_Solver::solve()
         {
             restart(x_star_k, x_tilde_k);
             ++restarts;
+            if (this->settings_.verbose)
+            {
+                std::stringstream ss;
+                ss << "restart executed";
+                print_str(ss);
+            }
         }
 
         // update objective for LP and resolve
@@ -225,6 +247,20 @@ bool OFP_Solver::solve()
         ++iter;
         alpha *= this->settings_.phi;
         x_tilde_km1 = x_tilde_k;
+
+        // verbosity
+        if (this->settings_.verbose && iter % this->settings_.verbosity_interval == 0)
+        {
+            // compute residual
+            Eigen::VectorXd x_star_eig, x_tilde_eig;
+            std_vector_2_eigen_vector(x_star_k, x_star_eig);
+            std_vector_2_eigen_vector(x_tilde_k, x_tilde_eig);
+            const double residual = (x_star_eig - x_tilde_eig).cwiseAbs().sum();
+
+            std::stringstream ss;
+            ss << "Iter: " << iter << ", residual: " << residual << ", perturbations: " << perturbations;
+            print_str(ss);
+        }
     }
 
     // get solution

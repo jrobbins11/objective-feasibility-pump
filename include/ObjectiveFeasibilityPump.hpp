@@ -27,6 +27,8 @@ namespace ObjectiveFeasibilityPump
         int buffer_size = 3; // R
         int T = 20;
         unsigned int rng_seed = 0;
+        bool verbose = false;
+        int verbosity_interval = 100;
     };
 
     struct OFP_Info

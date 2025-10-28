@@ -3,6 +3,8 @@
 #include <pybind11/eigen.h>
 namespace py = pybind11;
 
+#define IS_PYTHON_ENV
+
 #include "ObjectiveFeasibilityPump.hpp"
 using namespace ObjectiveFeasibilityPump;
 
@@ -23,6 +25,8 @@ PYBIND11_MODULE(_core, m)
         .def_readwrite("buffer_size", &OFP_Settings::buffer_size)
         .def_readwrite("T", &OFP_Settings::T)
         .def_readwrite("rng_seed", &OFP_Settings::rng_seed)
+        .def_readwrite("verbose", &OFP_Settings::verbose)
+        .def_readwrite("verbosity_interval", &OFP_Settings::verbosity_interval)
     ;
 
     py::class_<OFP_Info>(m, "OFP_Info")
