@@ -39,8 +39,6 @@ namespace ObjectiveFeasibilityPump
         double alpha = 0.0;
     };
 
-
-
     class OFP_Solver
     {
     public:

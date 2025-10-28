@@ -145,6 +145,7 @@ bool OFP_Solver::solve()
     Delta_S.setZero();
     cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
     const int T = static_cast<int>(std::round(this->settings_.T_frac * n));
+    std::uniform_int_distribution<int> T_dist(T/2, 3*T/2);
 
     // OFP loop
     while (!vectors_equal(x_star_k, x_tilde_k, this->settings_.tol))
@@ -178,7 +179,7 @@ bool OFP_Solver::solve()
             std::sort(frac_vec.begin(), frac_vec.end(), frac_comp);
 
             // flip binaries
-            for (int i=0; i<T; ++i) {
+            for (int i=0; i<T_dist(rand_gen); ++i) {
                 const int ib = frac_vec[i].first;
                 x_tilde_k[ib] = x_star_k[ib] < 1.0 - x_star_k[ib] ? 1.0 : 0.0;
             }
