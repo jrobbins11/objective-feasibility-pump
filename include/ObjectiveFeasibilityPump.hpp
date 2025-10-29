@@ -19,9 +19,9 @@ namespace ObjectiveFeasibilityPump
         int max_iter = 10000;
         int max_restarts = 100;
         double tol = Eigen::NumTraits<double>::dummy_precision();
-        double alpha0 = 0.9;
+        double alpha0 = 1.0;
         double phi = 0.9;
-        double delta_alpha = 0.1;
+        double delta_alpha = 0.005;
         double t_max = 60.0;
         int lp_threads = 1;
         int buffer_size = 10;
