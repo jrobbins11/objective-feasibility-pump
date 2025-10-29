@@ -101,6 +101,12 @@ void OFP_Solver::setup(const Eigen::VectorXd& c, const Eigen::SparseMatrix<doubl
         throw std::invalid_argument("OFP_Solver setup: dimensions mismatch");
     if (!check_settings(settings))
         throw std::invalid_argument("OFP_Solver setup: settings invalid");
+
+    for (const int ib : bins) {
+        if (std::abs(l_x(ib) - 0.0) > settings.tol || std::abs(u_x(ib) - 1.0) > settings.tol) {
+            throw std::invalid_argument("OFP_Solver setup: binary variable bounds are not {0, 1}");
+        }
+    }
 }
 
 bool OFP_Solver::solve()
@@ -323,9 +329,14 @@ double OFP_Solver::dist_to_LP_polyhedron(const std::vector<double>& x) const
     const Eigen::VectorXd Ax = this->A_*x_eig;
 
     double dist = 0; // init
-    for (int i=0; i<Ax.size(); ++i)
+    for (int i=0; i<this->m; ++i)
     {
         dist += std::max(std::max(l_A_(i) - Ax(i), Ax(i) - u_A_(i)), 0.0);
     }
+    for (int i=0; i<this->n; ++i)
+    {
+        dist += std::max(std::max(l_x_(i) - x_eig(i), x_eig(i) - u_x_(i)), 0.0);
+    }
+
     return dist;
 }
