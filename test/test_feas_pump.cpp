@@ -91,6 +91,8 @@ int main()
     settings.max_iter = 10000;
     settings.alpha0 = 1.0;
     settings.t_max = 10.0;
+    settings.verbose = true;
+    settings.verbosity_interval = 1;
     ObjectiveFeasibilityPump::OFP_Solver OFP (c, A, A_l, A_u, x_l, x_u, bins, settings);
     const bool success = OFP.solve();
     Eigen::VectorXd sol = OFP.get_solution();
@@ -103,6 +105,7 @@ int main()
     std::cout << "runtime: " << info.runtime << std::endl;
     std::cout << "feasible: " << info.feasible << std::endl;
     std::cout << "alpha: " << info.alpha << std::endl;
+    std::cout << "objective: " << info.objective << std::endl;
 
     return 0;
 }

@@ -17,16 +17,18 @@ namespace ObjectiveFeasibilityPump
     struct OFP_Settings
     {
         int max_iter = 10000;
-        int max_stalls = 100;
+        int max_restarts = 100;
         double tol = Eigen::NumTraits<double>::dummy_precision();
-        double alpha0 = 0.9;
+        double alpha0 = 1.0;
         double phi = 0.9;
-        double delta_alpha = 0.1;
+        double delta_alpha = 0.005;
         double t_max = 60.0;
         int lp_threads = 1;
-        int buffer_size = 20;
-        double T_frac = 0.1;
+        int buffer_size = 10;
+        int T = 20;
         unsigned int rng_seed = 0;
+        bool verbose = false;
+        int verbosity_interval = 100;
     };
 
     struct OFP_Info
@@ -37,9 +39,8 @@ namespace ObjectiveFeasibilityPump
         double runtime = 0.0;
         bool feasible = false;
         double alpha = 0.0;
+        double objective = 0.0;
     };
-
-
 
     class OFP_Solver
     {
@@ -47,13 +48,13 @@ namespace ObjectiveFeasibilityPump
 
         OFP_Solver() = default;
         OFP_Solver(const Eigen::VectorXd& c, const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& l_A, const Eigen::VectorXd& u_A,
-            const Eigen::VectorXd& l_x, const Eigen::VectorXd& u_x, const std::vector<int>& bins, const OFP_Settings& settings = OFP_Settings()) {
-            setup(c, A, l_A, u_A, l_x, u_x, bins, settings);
+            const Eigen::VectorXd& l_x, const Eigen::VectorXd& u_x, const std::vector<int>& bins, const OFP_Settings& settings = OFP_Settings(), double b=0.0) {
+            setup(c, A, l_A, u_A, l_x, u_x, bins, settings, b);
         }
 
         void setup(const Eigen::VectorXd& c, const Eigen::SparseMatrix<double>& A, const Eigen::VectorXd& l_A, const Eigen::VectorXd& u_A,
             const Eigen::VectorXd& l_x, const Eigen::VectorXd& u_x, const std::vector<int>& bins,
-            const OFP_Settings& settings = OFP_Settings());
+            const OFP_Settings& settings = OFP_Settings(), double b=0.0);
 
         bool solve();
 
@@ -64,6 +65,7 @@ namespace ObjectiveFeasibilityPump
     private:
         OFP_Info info_;
         OFP_Settings settings_;
+        double b_;
         Eigen::VectorXd c_, l_A_, u_A_, l_x_, u_x_, solution;
         Eigen::SparseMatrix<double> A_;
         std::vector<int> bins_;
@@ -75,7 +77,7 @@ namespace ObjectiveFeasibilityPump
         static void sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix, HighsSparseMatrix& highs_matrix);
         static bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b, double tol);
         void restart(const std::vector<double>& x_star, std::vector<double>& x_tilde);
-        bool check_feasible(const Eigen::VectorXd& x) const;
+        bool check_feasible(const std::vector<double>& x) const;
 
         template <typename T>
         static void eigen_vector_2_std_vector(const Eigen::Vector<T, -1>& eigen_vec, std::vector<T>& std_vec) {

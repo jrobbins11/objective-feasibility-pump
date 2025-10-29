@@ -3,6 +3,8 @@
 #include <pybind11/eigen.h>
 namespace py = pybind11;
 
+#define IS_PYTHON_ENV
+
 #include "ObjectiveFeasibilityPump.hpp"
 using namespace ObjectiveFeasibilityPump;
 
@@ -13,7 +15,7 @@ PYBIND11_MODULE(_core, m)
     py::class_<OFP_Settings>(m, "OFP_Settings")
         .def(py::init<>())
         .def_readwrite("max_iter", &OFP_Settings::max_iter)
-        .def_readwrite("max_stalls", &OFP_Settings::max_stalls)
+        .def_readwrite("max_restarts", &OFP_Settings::max_restarts)
         .def_readwrite("tol", &OFP_Settings::tol)
         .def_readwrite("alpha0", &OFP_Settings::alpha0)
         .def_readwrite("phi", &OFP_Settings::phi)
@@ -21,8 +23,10 @@ PYBIND11_MODULE(_core, m)
         .def_readwrite("t_max", &OFP_Settings::t_max)
         .def_readwrite("lp_threads", &OFP_Settings::lp_threads)
         .def_readwrite("buffer_size", &OFP_Settings::buffer_size)
-        .def_readwrite("T_frac", &OFP_Settings::T_frac)
+        .def_readwrite("T", &OFP_Settings::T)
         .def_readwrite("rng_seed", &OFP_Settings::rng_seed)
+        .def_readwrite("verbose", &OFP_Settings::verbose)
+        .def_readwrite("verbosity_interval", &OFP_Settings::verbosity_interval)
     ;
 
     py::class_<OFP_Info>(m, "OFP_Info")
@@ -33,6 +37,7 @@ PYBIND11_MODULE(_core, m)
         .def_readonly("runtime", &OFP_Info::runtime)
         .def_readonly("feasible", &OFP_Info::feasible)
         .def_readonly("alpha", &OFP_Info::alpha)
+        .def_readonly("objective", &OFP_Info::objective)
     ;
 
     py::class_<OFP_Solver>(m, "OFP_Solver")
