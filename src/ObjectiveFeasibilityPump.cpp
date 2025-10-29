@@ -163,9 +163,11 @@ bool OFP_Solver::solve()
     int restarts = 0;
     int perturbations = 0;
     double alpha = this->settings_.alpha0;
+    double dist_poly = std::numeric_limits<double>::infinity();
     Eigen::VectorXd Delta_S (this->n);
     Delta_S.setZero();
     cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
+    std::pair<double, std::vector<double>> x_tilde_closest = std::make_pair(std::numeric_limits<double>::infinity(), std::vector<double>());
 
     // OFP
     do
@@ -185,8 +187,18 @@ bool OFP_Solver::solve()
             x_tilde_k[ib] = std::round(x_tilde_k[ib]);
         }
 
-        // check for cycle of length 1 and perturb
-        if (vectors_equal(x_tilde_k, x_tilde_km1, this->settings_.tol))
+        // check if this is closest integer solution to polyhedron
+        dist_poly = dist_to_LP_polyhedron(x_tilde_k);
+        if (dist_poly < x_tilde_closest.first)
+        {
+            x_tilde_closest = std::make_pair(dist_poly, x_tilde_k);
+        }
+
+        // get cycle length
+        const std::pair<std::vector<double>, double> x_tilde_alpha = std::make_pair(x_tilde_k, alpha);
+        const int cycle_length = L.cycle_length(x_tilde_alpha);
+
+        if (cycle_length == 1) // perturbation
         {
             // find T most fractional variables in x_star
             std::vector<std::pair<int, double>> frac_vec;
@@ -204,24 +216,17 @@ bool OFP_Solver::solve()
                 x_tilde_k[ib] = x_star_k[ib] < 1.0 - x_star_k[ib] ? 1.0 : 0.0;
             }
 
-            // clear buffer
-            L.clear();
-
             ++perturbations;
         }
-
-        // push to buffer and check for cycle
-        if (!L.insert(std::make_pair(x_tilde_k, alpha)))
+        else if (cycle_length > 1) // restart
         {
             restart(x_star_k, x_tilde_k);
+            L.clear(); // clear buffer
             ++restarts;
-            if (this->settings_.verbose)
-            {
-                std::stringstream ss;
-                ss << "restart executed";
-                print_str(ss);
-            }
         }
+
+        // push to L
+        L.insert(x_tilde_alpha);
 
         // update objective for LP and resolve
         for (const int ib : this->bins_)
@@ -252,21 +257,15 @@ bool OFP_Solver::solve()
         // verbosity
         if (this->settings_.verbose && iter % this->settings_.verbosity_interval == 0)
         {
-            // compute residual
-            Eigen::VectorXd x_star_eig, x_tilde_eig;
-            std_vector_2_eigen_vector(x_star_k, x_star_eig);
-            std_vector_2_eigen_vector(x_tilde_k, x_tilde_eig);
-            const double residual = (x_star_eig - x_tilde_eig).cwiseAbs().sum();
-
             std::stringstream ss;
-            ss << "Iter: " << iter << ", residual: " << residual << ", perturbations: " << perturbations;
+            ss << "Iter: " << iter << ", residual: " << dist_poly << ", perturbations: " << perturbations << ", restarts: " << restarts;
             print_str(ss);
         }
     }
-    while (!check_feasible(x_tilde_k));
+    while (!(dist_poly < this->settings_.tol));
 
     // get solution
-    std_vector_2_eigen_vector(x_tilde_k, this->solution);
+    std_vector_2_eigen_vector(x_tilde_closest.second, this->solution);
 
     // log info
     this->info_.iter = iter;
@@ -275,7 +274,7 @@ bool OFP_Solver::solve()
     this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
     this->info_.alpha = alpha;
-    this->info_.feasible = check_feasible(x_tilde_k);
+    this->info_.feasible = (dist_poly < this->settings_.tol);
     this->info_.objective = this->c_.dot(this->solution) + b_;
 
     // return success flag
@@ -312,4 +311,21 @@ bool OFP_Solver::check_feasible(const std::vector<double>& x_std) const
     }
 
     return true;
+}
+
+double OFP_Solver::dist_to_LP_polyhedron(const std::vector<double>& x) const
+{
+    // to eigen vector
+    Eigen::VectorXd x_eig;
+    std_vector_2_eigen_vector(x, x_eig);
+
+    // get distance from polyhedron
+    const Eigen::VectorXd Ax = this->A_*x_eig;
+
+    double dist = 0; // init
+    for (int i=0; i<Ax.size(); ++i)
+    {
+        dist += std::max(std::max(l_A_(i) - Ax(i), Ax(i) - u_A_(i)), 0.0);
+    }
+    return dist;
 }

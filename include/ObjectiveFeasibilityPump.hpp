@@ -7,6 +7,7 @@
 #include <chrono>
 #include <utility>
 #include <algorithm>
+#include <limits>
 
 #include "Highs.h"
 #include "Eigen/Dense"
@@ -78,6 +79,7 @@ namespace ObjectiveFeasibilityPump
         static bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b, double tol);
         void restart(const std::vector<double>& x_star, std::vector<double>& x_tilde);
         bool check_feasible(const std::vector<double>& x) const;
+        double dist_to_LP_polyhedron(const std::vector<double>& x) const;
 
         template <typename T>
         static void eigen_vector_2_std_vector(const Eigen::Vector<T, -1>& eigen_vec, std::vector<T>& std_vec) {
@@ -103,21 +105,22 @@ namespace ObjectiveFeasibilityPump
             buffer.reserve(N);
         }
 
-        // returns false if value already contained in set
-        bool insert(const T& val) {
-            for (const T& b : buffer) {
-                if (comp(b, val)) {
-                    buffer.clear();
-                    return false;
+        // check containment
+        int cycle_length(const T& val) const {
+            for (auto it = buffer.rbegin(); it != buffer.rend(); ++it) {
+                if (comp(*it, val)) {
+                    return std::distance(buffer.rbegin(), it) + 1;
                 }
             }
+            return 0;
+        }
 
+        // returns false if cycle length > 1 detected
+        void insert(const T& val) {
             if (buffer.size() == N) {
                 buffer.erase(buffer.begin());
             }
             buffer.push_back(val);
-
-            return true;
         }
 
         // empty buffer
