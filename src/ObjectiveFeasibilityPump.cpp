@@ -166,8 +166,8 @@ bool OFP_Solver::solve()
     const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
     std::uniform_int_distribution<int> T_dist(T_min, T_max);
 
-    // OFP loop
-    while (!check_feasible(x_star_k))
+    // OFP phase 1
+    while (!vectors_equal(x_star_k, x_tilde_k, this->settings_.tol))
     {
         // check for early termination
         const double elapsed_time = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
@@ -183,6 +183,9 @@ bool OFP_Solver::solve()
         {
             x_tilde_k[ib] = std::round(x_tilde_k[ib]);
         }
+
+        // check if x_tilde is feasible
+        if (check_feasible(x_tilde_k)) break;
 
         // check for cycle of length 1 and perturb
         if (vectors_equal(x_tilde_k, x_tilde_km1, this->settings_.tol))
@@ -264,7 +267,7 @@ bool OFP_Solver::solve()
     }
 
     // get solution
-    std_vector_2_eigen_vector(x_star_k, this->solution);
+    std_vector_2_eigen_vector(x_tilde_k, this->solution);
 
     // log info
     this->info_.iter = iter;
@@ -273,7 +276,7 @@ bool OFP_Solver::solve()
     this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
     this->info_.alpha = alpha;
-    this->info_.feasible = check_feasible(x_star_k);
+    this->info_.feasible = check_feasible(x_tilde_k);
     this->info_.objective = this->c_.dot(this->solution) + b_;
 
     // return success flag
