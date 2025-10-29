@@ -7,6 +7,7 @@
 #include <chrono>
 #include <utility>
 #include <algorithm>
+#include <limits>
 
 #include "Highs.h"
 #include "Eigen/Dense"
@@ -18,6 +19,7 @@ namespace ObjectiveFeasibilityPump
     {
         int max_iter = 10000;
         int max_stalls = 100;
+        double p_stalls = 0.1;
         double tol = Eigen::NumTraits<double>::dummy_precision();
         double alpha0 = 0.9;
         double phi = 0.9;
@@ -78,6 +80,8 @@ namespace ObjectiveFeasibilityPump
         static bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b, double tol);
         void restart(const std::vector<double>& x_star, std::vector<double>& x_tilde);
         bool check_feasible(const std::vector<double>& x) const;
+        double dist_to_LP_polyhedron(const std::vector<double>& x) const;
+        double get_fractionality_measure(const std::vector<double>& x) const;
 
         template <typename T>
         static void eigen_vector_2_std_vector(const Eigen::Vector<T, -1>& eigen_vec, std::vector<T>& std_vec) {
@@ -95,46 +99,97 @@ namespace ObjectiveFeasibilityPump
         }
     };
 
-    template <typename T, typename EqualsComparator>
-    class cycle_buffer
-    {
-    public:
-        cycle_buffer(const size_t N, const EqualsComparator& comp): N(N), comp(comp) {
-            buffer.reserve(N);
-        }
+    namespace detail {
+        template <typename T, typename EqualsComparator>
+        class cycle_buffer
+        {
+        public:
+            cycle_buffer(const size_t N, const EqualsComparator& comp): N(N), comp(comp) {
+                buffer.reserve(N);
+            }
 
-        // returns false if value already contained in set
-        bool insert(const T& val) {
-            for (const T& b : buffer) {
-                if (comp(b, val)) {
-                    buffer.clear();
-                    return false;
+            // returns false if value already contained in set
+            bool insert(const T& val) {
+                for (const T& b : buffer) {
+                    if (comp(b, val)) {
+                        buffer.clear();
+                        return false;
+                    }
                 }
+
+                if (buffer.size() == N) {
+                    buffer.erase(buffer.begin());
+                }
+                buffer.push_back(val);
+
+                return true;
             }
 
-            if (buffer.size() == N) {
-                buffer.erase(buffer.begin());
+            // empty buffer
+            void clear() {
+                buffer.clear();
             }
-            buffer.push_back(val);
 
-            return true;
-        }
+            // get method
+            const std::vector<T>& get_vals() const {
+                return buffer;
+            }
 
-        // empty buffer
-        void clear() {
-            buffer.clear();
-        }
+        private:
+            const size_t N;
+            std::vector<T> buffer;
+            EqualsComparator comp;
+        };
 
-        // get method
-        const std::vector<T>& get_vals() const {
-            return buffer;
-        }
+        class frac_buffer
+        {
+        public:
+            frac_buffer(const size_t N, const double p): N(N), p(p) {
+                buffer.reserve(N);
+                assert(p >= 0.0 && p <= 1.0);
+            }
 
-    private:
-        const size_t N;
-        std::vector<T> buffer;
-        EqualsComparator comp;
-    };
+            // returns false if buffer is size N and fractionality has not reduced by at least p from last value
+            bool insert(const double val) {
+                bool valid = true;
+                if (buffer.size() == N) {
+                    const double req_val = p*buffer.front();
+                    bool req_val_exists = false;
+                    for (const double b : buffer) {
+                        if (b < req_val) {
+                            req_val_exists = true;
+                            break;
+                        }
+                    }
+                    valid = !req_val_exists;
+
+                    buffer.erase(buffer.begin());
+                    buffer.push_back(val);
+                }
+                else {
+                    buffer.push_back(val);
+                }
+                return valid;
+            }
+
+            // empty buffer
+            void clear() {
+                buffer.clear();
+            }
+
+            // get method
+            const std::vector<double>& get_vals() const {
+                return buffer;
+            }
+
+        private:
+            const size_t N;
+            const double p;
+            std::vector<double> buffer;
+        };
+
+
+    }
 }
 
 

@@ -22,7 +22,8 @@ bool OFP_Solver::check_settings(const OFP_Settings& settings)
 {
     return settings.alpha0 >= 0 && settings.alpha0 <= 1 && settings.phi > 0 && settings.phi < 1 &&
         settings.max_iter > 0 && settings.max_stalls > 0 && settings.t_max > 0 && settings.lp_threads >= 1 &&
-        settings.buffer_size > 0 && settings.T >= 0 && settings.verbosity_interval > 0;
+        settings.buffer_size > 0 && settings.T >= 0 && settings.verbosity_interval > 0 &&
+        settings.p_stalls >= 0 && settings.p_stalls <= 1;
 }
 
 void OFP_Solver::sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix, HighsSparseMatrix& highs_matrix)
@@ -151,6 +152,11 @@ bool OFP_Solver::solve()
         return a.second > b.second;
     };
 
+    // distribution for perturbations
+    const int T_min = this->settings_.T/2;
+    const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
+    std::uniform_int_distribution<int> T_dist(T_min, T_max);
+
     // initialize
     std::vector<double> x_star_k = solve_LP(); // root relaxation
     std::vector<double> x_tilde_k, x_tilde_km1;
@@ -158,16 +164,15 @@ bool OFP_Solver::solve()
     int restarts = 0;
     int perturbations = 0;
     double alpha = this->settings_.alpha0;
+    bool feasible = false;
     Eigen::VectorXd Delta_S (this->n);
     Delta_S.setZero();
-    cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
-
-    const int T_min = this->settings_.T/2;
-    const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
-    std::uniform_int_distribution<int> T_dist(T_min, T_max);
+    detail::cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
+    detail::frac_buffer frac_buf (this->settings_.max_stalls, this->settings_.p_stalls);
+    std::pair<double, std::vector<double>> x_tilde_closest = std::make_pair(std::numeric_limits<double>::infinity(), std::vector<double>());
 
     // OFP phase 1
-    while (!vectors_equal(x_star_k, x_tilde_k, this->settings_.tol))
+    do
     {
         // check for early termination
         const double elapsed_time = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
@@ -185,7 +190,17 @@ bool OFP_Solver::solve()
         }
 
         // check if x_tilde is feasible
-        if (check_feasible(x_tilde_k)) break;
+        if (check_feasible(x_tilde_k))
+        {
+            feasible = true;
+            break;
+        }
+
+        // check if this is closest integer solution to polyhedron
+        if (const double dist_poly = dist_to_LP_polyhedron(x_tilde_k); dist_poly < x_tilde_closest.first)
+        {
+            x_tilde_closest = std::make_pair(dist_poly, x_tilde_k);
+        }
 
         // check for cycle of length 1 and perturb
         if (vectors_equal(x_tilde_k, x_tilde_km1, this->settings_.tol))
@@ -246,6 +261,12 @@ bool OFP_Solver::solve()
 
         x_star_k = solve_LP();
 
+        // get fractionality and check for stalling
+        if (const double f = get_fractionality_measure(x_star_k); !frac_buf.insert(f))
+        {
+            break;
+        }
+
         // increment
         ++iter;
         alpha *= this->settings_.phi;
@@ -265,8 +286,19 @@ bool OFP_Solver::solve()
             print_str(ss);
         }
     }
+    while ((!vectors_equal(x_star_k, x_tilde_k, this->settings_.tol)));
 
-    // get solution
+    // phase 2
+    iter = 0;
+    restarts = 0;
+    perturbations = 0;
+    frac_buf.clear();
+    while (!feasible)
+    {
+        // init
+    }
+
+    // get solution as eigen vector
     std_vector_2_eigen_vector(x_tilde_k, this->solution);
 
     // log info
@@ -276,7 +308,7 @@ bool OFP_Solver::solve()
     this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
     this->info_.alpha = alpha;
-    this->info_.feasible = check_feasible(x_tilde_k);
+    this->info_.feasible = feasible;
     this->info_.objective = this->c_.dot(this->solution) + b_;
 
     // return success flag
@@ -313,4 +345,31 @@ bool OFP_Solver::check_feasible(const std::vector<double>& x_std) const
     }
 
     return true;
+}
+
+double OFP_Solver::dist_to_LP_polyhedron(const std::vector<double>& x) const
+{
+    // to eigen vector
+    Eigen::VectorXd x_eig;
+    std_vector_2_eigen_vector(x, x_eig);
+
+    // get distance from polyhedron
+    const Eigen::VectorXd Ax = this->A_*x_eig;
+
+    double dist = 0; // init
+    for (int i=0; i<Ax.size(); ++i)
+    {
+        dist += std::max(std::max(l_A_(i) - Ax(i), Ax(i) - u_A_(i)), 0.0);
+    }
+    return dist;
+}
+
+double OFP_Solver::get_fractionality_measure(const std::vector<double>& x) const
+{
+    double f = 0.0;
+    for (const int ib : bins_)
+    {
+        f += std::abs(x[ib] - std::floor(x[ib] + 0.5));
+    }
+    return f;
 }
