@@ -21,7 +21,7 @@ using namespace ObjectiveFeasibilityPump;
 bool OFP_Solver::check_settings(const OFP_Settings& settings)
 {
     return settings.alpha0 >= 0 && settings.alpha0 <= 1 && settings.phi > 0 && settings.phi < 1 &&
-        settings.max_iter > 0 && settings.max_stalls > 0 && settings.t_max > 0 && settings.lp_threads >= 1 &&
+        settings.max_iter > 0 && settings.max_restarts > 0 && settings.t_max > 0 && settings.lp_threads >= 1 &&
         settings.buffer_size > 0 && settings.T >= 0 && settings.verbosity_interval > 0;
 }
 
@@ -151,6 +151,11 @@ bool OFP_Solver::solve()
         return a.second > b.second;
     };
 
+    // perturbation distribution
+    const int T_min = this->settings_.T/2;
+    const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
+    std::uniform_int_distribution<int> T_dist(T_min, T_max);
+
     // initialize
     std::vector<double> x_star_k = solve_LP(); // root relaxation
     std::vector<double> x_tilde_k, x_tilde_km1;
@@ -162,17 +167,13 @@ bool OFP_Solver::solve()
     Delta_S.setZero();
     cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
 
-    const int T_min = this->settings_.T/2;
-    const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
-    std::uniform_int_distribution<int> T_dist(T_min, T_max);
-
-    // OFP phase 1
-    while (!vectors_equal(x_star_k, x_tilde_k, this->settings_.tol))
+    // OFP
+    do
     {
         // check for early termination
         const double elapsed_time = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
-        if (elapsed_time > this->settings_.t_max || iter > this->settings_.max_iter || restarts > this->settings_.max_stalls)
+        if (elapsed_time > this->settings_.t_max || iter > this->settings_.max_iter || restarts > this->settings_.max_restarts)
         {
             break;
         }
@@ -183,9 +184,6 @@ bool OFP_Solver::solve()
         {
             x_tilde_k[ib] = std::round(x_tilde_k[ib]);
         }
-
-        // check if x_tilde is feasible
-        if (check_feasible(x_tilde_k)) break;
 
         // check for cycle of length 1 and perturb
         if (vectors_equal(x_tilde_k, x_tilde_km1, this->settings_.tol))
@@ -265,6 +263,7 @@ bool OFP_Solver::solve()
             print_str(ss);
         }
     }
+    while (!check_feasible(x_tilde_k));
 
     // get solution
     std_vector_2_eigen_vector(x_tilde_k, this->solution);

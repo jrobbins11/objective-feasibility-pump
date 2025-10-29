@@ -17,14 +17,14 @@ namespace ObjectiveFeasibilityPump
     struct OFP_Settings
     {
         int max_iter = 10000;
-        int max_stalls = 100;
+        int max_restarts = 100;
         double tol = Eigen::NumTraits<double>::dummy_precision();
         double alpha0 = 0.9;
         double phi = 0.9;
         double delta_alpha = 0.1;
         double t_max = 60.0;
         int lp_threads = 1;
-        int buffer_size = 3; // R
+        int buffer_size = 10;
         int T = 20;
         unsigned int rng_seed = 0;
         bool verbose = false;
