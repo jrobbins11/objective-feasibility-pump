@@ -9,10 +9,6 @@ project(
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Release)
-
 if (BUILD_PYTHON_BINDINGS)
     find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
     find_package(pybind11 CONFIG REQUIRED)
@@ -72,4 +68,8 @@ else() # C++ build
 
     add_subdirectory(test)
 endif()
+
+target_compile_features(objective_feasibility_pump
+        PUBLIC cxx_std_17
+)
 
