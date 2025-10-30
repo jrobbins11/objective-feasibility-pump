@@ -218,6 +218,8 @@ bool OFP_Solver::solve()
 
             // flip binaries
             for (int i=0; i<T_dist(rand_gen); ++i) {
+                if (frac_vec[i].second < this->settings_.tol)
+                    break;
                 const int ib = frac_vec[i].first;
                 x_tilde_k[ib] = x_star_k[ib] < 1.0 - x_star_k[ib] ? 1.0 : 0.0;
             }
