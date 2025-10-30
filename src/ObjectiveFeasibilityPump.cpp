@@ -44,12 +44,12 @@ void OFP_Solver::sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix,
     }
 }
 
-bool OFP_Solver::vectors_equal(const std::vector<double>& a, const std::vector<double>& b, const double tol)
+bool OFP_Solver::vectors_equal(const std::vector<double>& a, const std::vector<double>& b) const
 {
     if (a.size() != b.size()) return false;
 
     for (int i=0; i<a.size(); ++i) {
-        if (std::abs(a[i] - b[i]) > tol)
+        if (std::abs(a[i] - b[i]) > this->settings_.tol)
             return false;
     }
 
@@ -147,7 +147,7 @@ bool OFP_Solver::solve()
 
     // (x_tilde, alpha) comparison
     auto x_tilde_alpha_comp = [&](const std::pair<std::vector<double>, double>& a, const std::pair<std::vector<double>, double>& b) -> bool {
-        const bool x_tilde_eq = vectors_equal(a.first, b.first, this->settings_.tol);
+        const bool x_tilde_eq = vectors_equal(a.first, b.first);
         const bool alpha_eq = std::abs(a.second - b.second) <= this->settings_.delta_alpha;
         return x_tilde_eq && alpha_eq;
     };
@@ -164,7 +164,7 @@ bool OFP_Solver::solve()
 
     // initialize
     std::vector<double> x_star_k = solve_LP(); // root relaxation
-    std::vector<double> x_tilde_k, x_tilde_km1;
+    std::vector<double> x_tilde_k;
     int iter = 0;
     int restarts = 0;
     int perturbations = 0;
@@ -202,9 +202,8 @@ bool OFP_Solver::solve()
 
         // get cycle length
         const std::pair<std::vector<double>, double> x_tilde_alpha = std::make_pair(x_tilde_k, alpha);
-        const int cycle_length = L.cycle_length(x_tilde_alpha);
 
-        if (cycle_length == 1) // perturbation
+        if (vectors_equal(L.get_back().first, x_tilde_k)) // perturbation
         {
             // find T most fractional variables in x_star
             std::vector<std::pair<int, double>> frac_vec;
@@ -226,7 +225,7 @@ bool OFP_Solver::solve()
 
             ++perturbations;
         }
-        else if (cycle_length > 1) // restart
+        else if (L.contains(x_tilde_alpha)) // restart
         {
             restart(x_star_k, x_tilde_k);
             L.clear(); // clear buffer
@@ -260,7 +259,6 @@ bool OFP_Solver::solve()
         // increment
         ++iter;
         alpha *= this->settings_.phi;
-        x_tilde_km1 = x_tilde_k;
 
         // verbosity
         if (this->settings_.verbose && iter % this->settings_.verbosity_interval == 0)

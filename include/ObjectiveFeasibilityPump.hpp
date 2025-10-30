@@ -76,7 +76,7 @@ namespace ObjectiveFeasibilityPump
         bool check_dimensions() const;
         static bool check_settings(const OFP_Settings& settings);
         static void sparse_eigen_2_highs(Eigen::SparseMatrix<double>& eigen_matrix, HighsSparseMatrix& highs_matrix);
-        static bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b, double tol);
+        bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b) const;
         void restart(const std::vector<double>& x_star, std::vector<double>& x_tilde);
         bool check_feasible(const std::vector<double>& x) const;
         double dist_to_LP_polyhedron(const std::vector<double>& x) const;
@@ -106,13 +106,13 @@ namespace ObjectiveFeasibilityPump
         }
 
         // check containment
-        int cycle_length(const T& val) const {
+        bool contains(const T& val) const {
             for (auto it = buffer.rbegin(); it != buffer.rend(); ++it) {
                 if (comp(*it, val)) {
-                    return std::distance(buffer.rbegin(), it) + 1;
+                    return true;
                 }
             }
-            return 0;
+            return false;
         }
 
         // returns false if cycle length > 1 detected
@@ -128,9 +128,13 @@ namespace ObjectiveFeasibilityPump
             buffer.clear();
         }
 
-        // get method
+        // get methods
         const std::vector<T>& get_vals() const {
             return buffer;
+        }
+
+        const T& get_back() const {
+            return buffer.back();
         }
 
     private:
