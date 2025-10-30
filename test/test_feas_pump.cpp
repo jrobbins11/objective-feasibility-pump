@@ -90,7 +90,7 @@ int main()
     ObjectiveFeasibilityPump::OFP_Settings settings;
     settings.max_iter = 10000;
     settings.max_restarts = 1000;
-    settings.t_max = 10.0;
+    settings.t_max = 600.0;
     settings.verbose = true;
     settings.verbosity_interval = 1;
     ObjectiveFeasibilityPump::OFP_Solver OFP (c, A, A_l, A_u, x_l, x_u, bins, settings);

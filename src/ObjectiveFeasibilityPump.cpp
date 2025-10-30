@@ -225,7 +225,7 @@ bool OFP_Solver::solve()
 
             ++perturbations;
         }
-        else if (L.contains(x_tilde_alpha)) // restart
+        if (L.contains_cycle(x_tilde_alpha)) // restart
         {
             restart(x_star_k, x_tilde_k);
             L.clear(); // clear buffer

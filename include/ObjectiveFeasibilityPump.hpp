@@ -106,11 +106,13 @@ namespace ObjectiveFeasibilityPump
         }
 
         // check containment
-        bool contains(const T& val) const {
+        bool contains_cycle(const T& val) const {
+            bool first = true;
             for (auto it = buffer.rbegin(); it != buffer.rend(); ++it) {
-                if (comp(*it, val)) {
+                if (comp(*it, val) && !first) {
                     return true;
                 }
+                first = false;
             }
             return false;
         }
