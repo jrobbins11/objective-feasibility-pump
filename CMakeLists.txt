@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.15...3.27)
 
-option(BUILD_PYTHON_BINDINGS "Build Python bindings for ObjectiveFeasibilityPump" OFF)
-message(STATUS "Building Python Bindings: ${BUILD_PYTHON_BINDINGS}")
+option(OFP_BUILD_PYTHON_BINDINGS "Build Python bindings for ObjectiveFeasibilityPump" OFF)
+message(STATUS "Building Python Bindings: ${OFP_BUILD_PYTHON_BINDINGS}")
+option(OFP_MAKE_EXAMPLE "Make example for ObjectiveFeasibilityPump" OFF)
+message(STATUS "OFP_MAKE_EXAMPLE: ${OFP_MAKE_EXAMPLE}")
 
 project(
     objective_feasibility_pump
@@ -9,7 +11,7 @@ project(
     LANGUAGES CXX
 )
 
-if (BUILD_PYTHON_BINDINGS)
+if (OFP_BUILD_PYTHON_BINDINGS)
     find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
     find_package(pybind11 CONFIG REQUIRED)
     set(TARGET_NAME _core)
@@ -34,7 +36,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Eigen3)
 
-if (BUILD_PYTHON_BINDINGS)
+if (OFP_BUILD_PYTHON_BINDINGS)
     python_add_library(${TARGET_NAME} MODULE python/src/objective_feasibility_pump_py.cpp
         src/ObjectiveFeasibilityPump.cpp
         WITH_SOABI
@@ -61,7 +63,9 @@ else() # C++ build
         CACHE INTERNAL "Path to fetched HiGHS headers" FORCE
     )
 
-    add_subdirectory(test)
+    if (OFP_MAKE_EXAMPLE)
+        add_subdirectory(test)
+    endif()
 endif()
 
 target_include_directories(${TARGET_NAME} PUBLIC

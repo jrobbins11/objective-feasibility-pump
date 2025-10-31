@@ -26,4 +26,4 @@ dependencies = [
 ]
 
 [tool.scikit-build]
-cmake.args = ["-DBUILD_PYTHON_BINDINGS=ON"]
+cmake.args = ["-DOFP_BUILD_PYTHON_BINDINGS=ON"]
