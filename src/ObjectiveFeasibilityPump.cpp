@@ -264,7 +264,7 @@ bool OFP_Solver::solve()
         if (this->settings_.verbose && iter % this->settings_.verbosity_interval == 0)
         {
             std::stringstream ss;
-            ss << "Iter: " << iter << ", residual: " << dist_poly << ", perturbations: " << perturbations << ", restarts: " << restarts;
+            ss << "Iter: " << iter << ", iter residual: " << dist_poly << ", best residual: " << x_tilde_closest.first << ", perturbations: " << perturbations << ", restarts: " << restarts;
             print_str(ss);
         }
     }
