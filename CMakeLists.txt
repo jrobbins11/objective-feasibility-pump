@@ -41,10 +41,6 @@ if (BUILD_PYTHON_BINDINGS)
     )
     target_link_libraries(${TARGET_NAME} PRIVATE highs Eigen3::Eigen pybind11::headers)
     target_compile_definitions(${TARGET_NAME} PRIVATE VERSION_INFO=${PROJECT_VERSION})
-    target_include_directories(${TARGET_NAME} PUBLIC
-            $<INSTALL_INTERFACE:include>
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    )
 
     set_target_properties(${TARGET_NAME} PROPERTIES
             INSTALL_RPATH "$ORIGIN"
@@ -58,10 +54,6 @@ else() # C++ build
     add_library(${TARGET_NAME} STATIC src/ObjectiveFeasibilityPump.cpp)
     target_link_libraries(${TARGET_NAME} PRIVATE highs)
     target_link_libraries(${TARGET_NAME} PUBLIC Eigen3::Eigen)
-    target_include_directories(${TARGET_NAME} PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    )
 
     set(HIGHS_INCLUDE_PATHs
         ${highs_SOURCE_DIR}/highs
@@ -71,6 +63,11 @@ else() # C++ build
 
     add_subdirectory(test)
 endif()
+
+target_include_directories(${TARGET_NAME} PUBLIC
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
 
 target_compile_features(${TARGET_NAME}
         PUBLIC cxx_std_17

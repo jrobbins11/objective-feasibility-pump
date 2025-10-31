@@ -29,7 +29,7 @@ def random_vector(m, val_range):
 ### main script ###
 
 # dimensions
-m = 1000
+m = 100
 n = 2300
 nb = 600
 density = 0.003
@@ -39,15 +39,15 @@ c = random_vector(n, 10.)
 x_l = np.zeros(n)
 x_u = np.ones(n)
 A = random_sparse_matrix(m, n, density, 1.0)
-A_l = -2.*np.ones(m)
-A_u = 2.*np.ones(m)
+A_l = -0.*np.ones(m)
+A_u = 0.*np.ones(m)
 bins = [i for i in range(n-nb, n)]
 
 # solve
 settings = ofp.OFP_Settings()
-settings.max_iter = 10000
-settings.alpha0 = 1.
 settings.t_max = 10.
+settings.verbose = True
+settings.verbosity_interval = 1
 
 OFP = ofp.OFP_Solver(c, A, A_l, A_u, x_l, x_u, bins, settings=settings)
 success = OFP.solve()
