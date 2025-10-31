@@ -64,7 +64,7 @@ else() # C++ build
     )
 
     if (OFP_MAKE_EXAMPLE)
-        add_subdirectory(test)
+        add_subdirectory(examples)
     endif()
 endif()
 

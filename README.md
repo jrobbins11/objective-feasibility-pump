@@ -1,4 +1,4 @@
-## Objective Feasibility Pump with HiGHS LP solver
+## Objective Feasibility Pump
 
 Implementation of the objective feasibility pump using HiGHS for LP solutions.
 
@@ -11,11 +11,11 @@ C++ example:
 ```
 cmake -DOFP_MAKE_EXAMPLE=ON -S . -B build
 cmake --build build
-./build/test/test_feas_pump
+./build/examples/test_feas_pump
 ```
 
 Python example:
 ```
 pip install .
-python3 test/test_feas_pump.py
+python3 examples/test_feas_pump.py
 ```
