@@ -30,6 +30,7 @@ namespace ObjectiveFeasibilityPump
         unsigned int rng_seed = 0;
         bool verbose = false;
         int verbosity_interval = 100;
+        bool inf_norm_conv = false;
     };
 
     struct OFP_Info
@@ -79,7 +80,6 @@ namespace ObjectiveFeasibilityPump
         bool vectors_equal(const std::vector<double>& a, const std::vector<double>& b) const;
         void restart(const std::vector<double>& x_star, std::vector<double>& x_tilde);
         bool check_feasible(const std::vector<double>& x) const;
-        double dist_to_LP_polyhedron(const std::vector<double>& x) const;
 
         template <typename T>
         static void eigen_vector_2_std_vector(const Eigen::Vector<T, -1>& eigen_vec, std::vector<T>& std_vec) {

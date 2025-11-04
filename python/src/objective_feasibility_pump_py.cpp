@@ -27,6 +27,7 @@ PYBIND11_MODULE(_core, m)
         .def_readwrite("rng_seed", &OFP_Settings::rng_seed)
         .def_readwrite("verbose", &OFP_Settings::verbose)
         .def_readwrite("verbosity_interval", &OFP_Settings::verbosity_interval)
+        .def_readwrite("inf_norm_conv", &OFP_Settings::inf_norm_conv)
     ;
 
     py::class_<OFP_Info>(m, "OFP_Info")

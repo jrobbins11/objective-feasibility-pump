@@ -157,6 +157,22 @@ bool OFP_Solver::solve()
         return a.second > b.second;
     };
 
+    // distance between vectors
+    auto get_dist = [&](const std::vector<double>& a, const std::vector<double>& b) -> double {
+        double dist = 0.0;
+        if (this->settings_.inf_norm_conv) {
+            for (int i=0; i<a.size(); ++i) {
+                dist = std::max(dist, std::abs(a[i] - b[i]));
+            }
+        }
+        else {
+            for (int i=0; i<a.size(); ++i) {
+                dist += std::abs(a[i] - b[i]);
+            }
+        }
+        return dist;
+    };
+
     // perturbation distribution
     const int T_min = this->settings_.T/2;
     const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
@@ -169,7 +185,7 @@ bool OFP_Solver::solve()
     int restarts = 0;
     int perturbations = 0;
     double alpha = this->settings_.alpha0;
-    double dist_poly = std::numeric_limits<double>::infinity();
+    double dist = std::numeric_limits<double>::infinity();
     Eigen::VectorXd Delta_S (this->n);
     Delta_S.setZero();
     cycle_buffer<std::pair<std::vector<double>, double>, decltype(x_tilde_alpha_comp)> L (this->settings_.buffer_size, x_tilde_alpha_comp);
@@ -194,10 +210,10 @@ bool OFP_Solver::solve()
         }
 
         // check if this is closest integer solution to polyhedron
-        dist_poly = dist_to_LP_polyhedron(x_tilde_k);
-        if (dist_poly < x_tilde_closest.first)
+        dist = get_dist(x_tilde_k, x_star_k);
+        if (dist < x_tilde_closest.first)
         {
-            x_tilde_closest = std::make_pair(dist_poly, x_tilde_k);
+            x_tilde_closest = std::make_pair(dist, x_tilde_k);
         }
 
         // get cycle length
@@ -264,11 +280,11 @@ bool OFP_Solver::solve()
         if (this->settings_.verbose && iter % this->settings_.verbosity_interval == 0)
         {
             std::stringstream ss;
-            ss << "Iter: " << iter << ", iter residual: " << dist_poly << ", best residual: " << x_tilde_closest.first << ", perturbations: " << perturbations << ", restarts: " << restarts;
+            ss << "Iter: " << iter << ", iter residual: " << dist << ", best residual: " << x_tilde_closest.first << ", perturbations: " << perturbations << ", restarts: " << restarts;
             print_str(ss);
         }
     }
-    while (!(dist_poly < this->settings_.tol));
+    while (!(dist < this->settings_.tol));
 
     // get solution
     std_vector_2_eigen_vector(x_tilde_closest.second, this->solution);
@@ -280,7 +296,7 @@ bool OFP_Solver::solve()
     this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::high_resolution_clock::now() - start_time).count());
     this->info_.alpha = alpha;
-    this->info_.feasible = (dist_poly < this->settings_.tol);
+    this->info_.feasible = (dist < this->settings_.tol);
     this->info_.objective = this->c_.dot(this->solution) + b_;
 
     // return success flag
@@ -317,26 +333,4 @@ bool OFP_Solver::check_feasible(const std::vector<double>& x_std) const
     }
 
     return true;
-}
-
-double OFP_Solver::dist_to_LP_polyhedron(const std::vector<double>& x) const
-{
-    // to eigen vector
-    Eigen::VectorXd x_eig;
-    std_vector_2_eigen_vector(x, x_eig);
-
-    // get distance from polyhedron
-    const Eigen::VectorXd Ax = this->A_*x_eig;
-
-    double dist = 0; // init
-    for (int i=0; i<this->m; ++i)
-    {
-        dist += std::max(std::max(l_A_(i) - Ax(i), Ax(i) - u_A_(i)), 0.0);
-    }
-    for (int i=0; i<this->n; ++i)
-    {
-        dist += std::max(std::max(l_x_(i) - x_eig(i), x_eig(i) - u_x_(i)), 0.0);
-    }
-
-    return dist;
 }
