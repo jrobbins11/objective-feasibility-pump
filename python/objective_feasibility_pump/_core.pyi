@@ -8,32 +8,26 @@ class OFP_Info:
     def __init__(self) -> None:
         """__init__(self: objective_feasibility_pump._core.OFP_Info) -> None"""
     @property
-    def alpha(self) -> float:
-        """(self: objective_feasibility_pump._core.OFP_Info) -> float"""
+    def alpha(self) -> float: ...
     @property
-    def feasible(self) -> bool:
-        """(self: objective_feasibility_pump._core.OFP_Info) -> bool"""
+    def feasible(self) -> bool: ...
     @property
-    def iter(self) -> int:
-        """(self: objective_feasibility_pump._core.OFP_Info) -> int"""
+    def iter(self) -> int: ...
     @property
-    def objective(self) -> float:
-        """(self: objective_feasibility_pump._core.OFP_Info) -> float"""
+    def objective(self) -> float: ...
     @property
-    def perturbations(self) -> int:
-        """(self: objective_feasibility_pump._core.OFP_Info) -> int"""
+    def perturbations(self) -> int: ...
     @property
-    def restarts(self) -> int:
-        """(self: objective_feasibility_pump._core.OFP_Info) -> int"""
+    def restarts(self) -> int: ...
     @property
-    def runtime(self) -> float:
-        """(self: objective_feasibility_pump._core.OFP_Info) -> float"""
+    def runtime(self) -> float: ...
 
 class OFP_Settings:
     T: int
     alpha0: float
     buffer_size: int
     delta_alpha: float
+    inf_norm_conv: bool
     lp_threads: int
     max_iter: int
     max_restarts: int
@@ -48,7 +42,7 @@ class OFP_Settings:
 
 class OFP_Solver:
     def __init__(self, c: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, '[m, 1]'], A: scipy.sparse.csc_matrix[numpy.float64], l_A: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, '[m, 1]'], u_A: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, '[m, 1]'], l_x: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, '[m, 1]'], u_x: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, '[m, 1]'], bins: collections.abc.Sequence[typing.SupportsInt], settings: OFP_Settings = ...) -> None:
-        '''__init__(self: objective_feasibility_pump._core.OFP_Solver, c: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], A: scipy.sparse.csc_matrix[numpy.float64], l_A: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], u_A: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], l_x: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], u_x: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], bins: collections.abc.Sequence[typing.SupportsInt], settings: objective_feasibility_pump._core.OFP_Settings = <objective_feasibility_pump._core.OFP_Settings object at 0x777ea0acceb0>) -> None'''
+        '''__init__(self: objective_feasibility_pump._core.OFP_Solver, c: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], A: scipy.sparse.csc_matrix[numpy.float64], l_A: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], u_A: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], l_x: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], u_x: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[m, 1]"], bins: collections.abc.Sequence[typing.SupportsInt], settings: objective_feasibility_pump._core.OFP_Settings = <objective_feasibility_pump._core.OFP_Settings object at 0x72f474dee130>) -> None'''
     def get_info(self) -> OFP_Info:
         """get_info(self: objective_feasibility_pump._core.OFP_Solver) -> objective_feasibility_pump._core.OFP_Info"""
     def get_solution(self) -> typing.Annotated[numpy.typing.NDArray[numpy.float64], '[m, 1]']:
