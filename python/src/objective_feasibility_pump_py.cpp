@@ -43,9 +43,9 @@ PYBIND11_MODULE(_core, m)
 
     py::class_<OFP_Solver>(m, "OFP_Solver")
         .def(py::init<const Eigen::VectorXd&, const Eigen::SparseMatrix<double>&, const Eigen::VectorXd&, const Eigen::VectorXd&,
-                      const Eigen::VectorXd&, const Eigen::VectorXd&, const std::vector<int>&, const OFP_Settings&>(),
+                      const Eigen::VectorXd&, const Eigen::VectorXd&, const std::vector<int>&, const OFP_Settings&, double>(),
              py::arg("c"), py::arg("A"), py::arg("l_A"), py::arg("u_A"),
-             py::arg("l_x"), py::arg("u_x"), py::arg("bins"), py::arg("settings") = OFP_Settings())
+             py::arg("l_x"), py::arg("u_x"), py::arg("bins"), py::arg("settings") = OFP_Settings(), py::arg("b") = 0.0)
         .def("solve", &OFP_Solver::solve)
         .def("get_info", &OFP_Solver::get_info)
         .def("get_solution", &OFP_Solver::get_solution)

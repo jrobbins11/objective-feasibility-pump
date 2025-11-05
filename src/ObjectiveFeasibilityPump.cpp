@@ -178,8 +178,26 @@ bool OFP_Solver::solve()
     const int T_max = std::min(3*this->settings_.T/2, static_cast<int>(this->bins_.size()));
     std::uniform_int_distribution<int> T_dist(T_min, T_max);
 
-    // initialize
+    // root relaxation
     std::vector<double> x_star_k = solve_LP(); // root relaxation
+    if (highs.getModelStatus() == HighsModelStatus::kInfeasible)
+    {
+        // early exit
+        this->info_.iter = 0;
+        this->info_.restarts = 0;
+        this->info_.perturbations = 0;
+        this->info_.runtime = 1e-6 * static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::high_resolution_clock::now() - start_time).count());
+        this->info_.alpha = this->settings_.alpha0;
+        this->info_.feasible = false;
+        this->info_.objective = std::numeric_limits<double>::infinity();
+
+        this->solution.resize(this->n);
+
+        return false;
+    }
+
+    // initialize
     std::vector<double> x_tilde_k;
     int iter = 0;
     int restarts = 0;
